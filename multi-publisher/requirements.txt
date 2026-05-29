@@ -1,0 +1,22 @@
+# ===== Markdown 处理 =====
+markdown>=3.5
+Pygments>=2.17          # 代码语法高亮
+beautifulsoup4>=4.12    # HTML 解析与清洗
+lxml>=5.1               # HTML/XML 解析加速
+
+# ===== 平台 API 对接 =====
+# xmlrpc.client 是 Python 标准库，无需额外安装（博客园 MetaWeblog API）
+requests>=2.31          # HTTP 请求（开源中国、微信 API）
+
+# ===== 配置与命令行 =====
+pyyaml>=6.0             # YAML 配置文件解析
+click>=8.1              # CLI 命令行工具
+rich>=13.7              # 终端美化输出
+
+# ===== 小红书图片生成 =====
+Pillow>=10.2            # 图片处理
+# playwright>=1.41      # 可选：浏览器自动化（用于知乎等无API平台）
+
+# ===== 工具类 =====
+python-frontmatter>=1.0 # Markdown Front Matter 解析
+pyperclip>=1.8          # 剪贴板操作

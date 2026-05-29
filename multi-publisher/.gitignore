@@ -1,0 +1,9 @@
+# 多平台分发工具
+__pycache__/
+*.pyc
+*.pyo
+output/
+.env
+*.egg-info/
+dist/
+build/

@@ -1,0 +1,88 @@
+# ============================================================
+# 多平台分发工具 - 全局配置
+# ============================================================
+
+# 默认发布的平台列表
+default_platforms:
+  - cnblogs      # 博客园
+  - oschina      # 开源中国
+  - wechat       # 微信公众号（生成 HTML，手动粘贴）
+  - zhihu        # 知乎（格式转换，手动粘贴）
+  - xiaohongshu  # 小红书（生成图片描述，手动发布）
+
+# ============================================================
+# 博客园 - MetaWeblog API
+# 申请方式：博客园后台 → 设置 → 允许 MetaWeblog 访问
+# ============================================================
+cnblogs:
+  enabled: true
+  blog_url: "https://rpc.cnblogs.com/metaweblog/你的博客名"
+  username: "你的博客园用户名"
+  password: "你的博客园密码或token"
+
+# ============================================================
+# 开源中国 - Open API
+# 申请方式：https://www.oschina.net/openapi
+# ============================================================
+oschina:
+  enabled: true
+  client_id: "你的client_id"
+  client_secret: "你的client_secret"
+  access_token: "你的access_token"
+  # 发布类型：article(普通文章) / blog(博客)
+  pub_type: "article"
+
+# ============================================================
+# 微信公众号 - 草稿箱接口
+# 前提：已认证的微信服务号/订阅号
+# 获取方式：https://mp.weixin.qq.com/ → 开发 → 基本配置
+# ============================================================
+wechat:
+  enabled: false
+  appid: "你的AppID"
+  appsecret: "你的AppSecret"
+  # 是否只生成 HTML 草稿不自动发布
+  draft_only: true
+
+# ============================================================
+# 知乎 (格式转换辅助，不支持自动发布)
+# ============================================================
+zhihu:
+  enabled: true
+  # 是否自动复制到剪贴板（macOS/Linux 需 xclip/pbcopy）
+  auto_copy: false
+
+# ============================================================
+# 小红书 (图片生成辅助，不支持自动发布)
+# ============================================================
+xiaohongshu:
+  enabled: true
+  # 封面图生成配置
+  cover:
+    width: 1080
+    height: 1440
+    bg_color: "#1a1a2e"
+    title_font_size: 48
+
+# ============================================================
+# DeepSeek AI 文章优化（可选）
+# 申请方式：https://platform.deepseek.com → 注册 → API Keys
+# 不填 api_key 则跳过 AI 优化，使用默认格式转换
+# ============================================================
+deepseek:
+  enabled: true
+  api_key: "你的DeepSeek_API_Key"   # 填入你的 API Key
+  model: "deepseek-chat"             # 模型：deepseek-chat / deepseek-reasoner
+  max_tokens: 8192                   # 最大输出 token
+  temperature: 0.7                   # 创意度 0-1，越小越保守
+
+# ============================================================
+# Markdown 转换全局设置
+# ============================================================
+converter:
+  # 代码块高亮主题
+  code_theme: "monokai"
+  # 是否压缩 HTML 输出
+  minify_html: false
+  # 图片处理方式：base64 / upload / keep_url
+  image_mode: "keep_url"
