@@ -52,7 +52,7 @@ class WechatPlatform(BasePlatform):
             return self._access_token
 
         resp = requests.get(self.TOKEN_URL, params={
-            "grant_type": "client_credentials",
+            "grant_type": "client_credential",
             "appid": self.appid,
             "secret": self.appsecret,
         }, timeout=15)
