@@ -59,13 +59,18 @@ class CnblogsPlatform(BasePlatform):
         try:
             client = self._get_client()
 
-            # 将 Markdown 转为简单 HTML（博客园有自己的 MD 渲染，也可直接传 MD）
-            # 注意：博客园 API 的 description 字段支持 Markdown
+            # 博客园 MetaWeblog API 的 description 需要 HTML
+            # 用 Markdown 转 HTML 后再发送
+            from ..converter import MarkdownConverter
+            md_conv = MarkdownConverter()
+            html_content = md_conv.to_html(result.content)
+
             post = {
                 "title": result.title or "未命名文章",
-                "description": result.content,  # 直接传 Markdown
+                "description": html_content,
                 "categories": result.meta.categories or ["默认分类"],
                 "mt_keywords": result.meta.keywords or "",
+                "mt_text_more": "",           # 摘要（空=自动截取）
             }
 
             post_id = client.metaWeblog.newPost(
