@@ -30,6 +30,7 @@ class WechatPlatform(BasePlatform):
     TOKEN_URL              = "https://api.weixin.qq.com/cgi-bin/token"
     DRAFT_ADD_URL          = "https://api.weixin.qq.com/cgi-bin/draft/add"
     FREEPUBLISH_SUBMIT_URL = "https://api.weixin.qq.com/cgi-bin/freepublish/submit"
+    MATERIAL_ADD_URL       = "https://api.weixin.qq.com/cgi-bin/material/add_material"
 
     def __init__(self, config: dict):
         super().__init__(config)
@@ -86,10 +87,15 @@ class WechatPlatform(BasePlatform):
             return PublishResult(success=True, platform=self.name,
                                  url=f"file://{filepath.absolute()}", message=message)
 
-        # 2. 获取 token → 添加草稿
+        # 2. 获取 token → 上传封面图 → 添加草稿
         try:
             token = self._get_access_token()
-            draft_data = self._add_draft(token, result)
+
+            # 2a. 上传默认封面图（必填！）
+            thumb_media_id = self._upload_default_cover(token)
+
+            # 2b. 添加草稿
+            draft_data = self._add_draft(token, result, thumb_media_id)
 
             if "media_id" not in draft_data:
                 raise Exception(f"添加草稿失败: {draft_data}")
@@ -103,13 +109,13 @@ class WechatPlatform(BasePlatform):
                 if pub_data.get("errcode") == 0:
                     publish_id = pub_data.get("publish_id", "")
                     message += f"\n🚀 已提交发布！(publish_id: {publish_id})"
-                    message += "\n   稍后在公众号后台查看发布状态"
-                    # 尝试获取已发布文章的链接
                     article_url = self._get_published_url(token, publish_id)
                     if article_url:
                         message += f"\n🔗 {article_url}"
+                elif pub_data.get("errcode") == 48001:
+                    message += "\n💡 订阅号不支持 API 发布，请在后台手动点「发布」"
                 else:
-                    message += f"\n⚠️ 发布提交失败: {pub_data}"
+                    message += f"\n⚠️ 发布提交失败: {pub_data.get('errmsg', pub_data)}"
 
         except Exception as e:
             message += f"\n⚠️ API 调用失败: {e}"
@@ -122,15 +128,50 @@ class WechatPlatform(BasePlatform):
             message=message,
         )
 
-    def _add_draft(self, token: str, result: ConvertResult) -> dict:
+    def _upload_default_cover(self, token: str) -> str:
+        """上传默认封面图，返回 media_id（thumb_media_id 是草稿必填字段）"""
+        try:
+            from PIL import Image
+            import io
+
+            # 生成 900x383 纯色封面图（微信推荐尺寸）
+            img = Image.new("RGB", (900, 383), color=(26, 26, 46))
+            buf = io.BytesIO()
+            img.save(buf, format="PNG")
+            buf.seek(0)
+
+            resp = requests.post(
+                f"{self.MATERIAL_ADD_URL}?access_token={token}&type=image",
+                files={"media": ("cover.png", buf, "image/png")},
+                timeout=20,
+            )
+            data = resp.json()
+            if "media_id" in data:
+                return data["media_id"]
+            raise Exception(f"上传封面失败: {data}")
+        except ImportError:
+            raise Exception("需要 Pillow 库生成封面图: pip install Pillow")
+
+    def _add_draft(self, token: str, result: ConvertResult, thumb_media_id: str) -> dict:
         """将文章保存到微信草稿箱"""
+        title = (result.title or "未命名")
+        # 微信订阅号草稿标题限制约 30 字节（实测值）
+        title_bytes = title.encode("utf-8")[:30]
+        while title_bytes:
+            try:
+                title = title_bytes.decode("utf-8")
+                break
+            except UnicodeDecodeError:
+                title_bytes = title_bytes[:-1]
+        if not title_bytes:
+            title = "未命名"
         articles = [{
-            "title": result.title or "未命名",
+            "title": title,
             "content": result.content,
+            "thumb_media_id": thumb_media_id,       # 必填！
             "content_source_url": "",
             "need_open_comment": 0,
             "only_fans_can_comment": 0,
-            "thumb_media_id": "",       # 封面图 media_id，有空再实现上传
         }]
         resp = requests.post(
             f"{self.DRAFT_ADD_URL}?access_token={token}",
