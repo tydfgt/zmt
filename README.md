@@ -125,17 +125,47 @@ cnblogs:
 ```yaml
 oschina:
   enabled: true
-  client_id: "你的client_id"
-  client_secret: "你的client_secret"
-  pub_type: "article"
+  client_id: "你的client_id"               # 创建应用后获得
+  client_secret: "你的client_secret"       # 应用的 Secret
+  redirect_uri: "https://www.oschina.net"  # 回调地址
+  access_token: ""                         # 首次留空，授权后自动获取
+  refresh_token: ""                        # 授权后填到这里，一劳永逸
+  pub_type: "blog"                         # blog(博客,推荐) / tweet(动弹)
+  classification: 428                      # 系统分类 ID（见下方）
+  save_as_draft: 0                         # 0=发布, 1=存草稿
+  privacy: "0"                             # "0"=公开
 ```
 
-**怎么获取？**
+**怎么获取？（稍复杂，但只需做一次）**
+
+开源中国用的是 **OAuth 2.0 授权码模式**，首次需要你手动授权一次👇
+
+**第一步：创建应用**
 
 1. 登录 https://www.oschina.net
-2. 点右上角头像 →「个人中心」→ 左侧「Open API」
-3. 创建一个应用，获取 `client_id` 和 `client_secret`
-4. `pub_type` 填 `article`（文章）或 `blog`（博客），推荐 `article`
+2. 右上角头像 →「个人中心」→ 左侧「Open API」
+3. 点击「创建应用」，填写：
+   - 应用名称：随便填（如「文章发布工具」）
+   - 回调地址：填 `https://www.oschina.net`
+4. 创建成功后，把 `client_id` 和 `client_secret` 填入 `config.yaml`
+
+**第二步：首次授权（工具自动帮你做）**
+
+```bash
+python -m publisher.cli publish article.md -p oschina --dry-run
+```
+
+工具会**自动打开浏览器**，你只需：
+1. 在浏览器中点「授权」
+2. 授权后会跳转到 oschina.net，地址栏中有 `code=xxxx`
+3. 复制 `code=` 后面的值，粘贴回终端
+4. 工具会自动获取 token 并显示 `refresh_token`
+
+**第三步：保存 refresh_token**
+
+把终端显示的 `refresh_token` 复制到 `config.yaml` 的 `oschina.refresh_token` 位置。以后就不会再弹浏览器了！
+
+> 💡 `classification` 是系统博客分类 ID：428=编程语言, 429=移动开发, 430=前端, 431=后端, 432=数据库, 433=云计算, 434=AI, 435=开源项目, 436=操作系统, 437=软件工具, 438=其他
 
 ### 微信公众号（可选，需要认证公众号）
 

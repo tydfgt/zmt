@@ -23,17 +23,22 @@ cnblogs:
 # ============================================================
 # 开源中国 - Open API
 # 申请方式：https://www.oschina.net/openapi
+# 认证方式：OAuth 2.0 authorization_code（不支持 client_credentials）
+# 首次使用时会打开浏览器引导你授权，授权后把 refresh_token 填到这里
 # ============================================================
-oschina:
+ oschina:
   enabled: true
-  client_id: "你的client_id"
-  client_secret: "你的client_secret"
-  access_token: "你的access_token"
-  # 发布类型：article(普通文章) / blog(博客)
-  pub_type: "article"
-
-# ============================================================
-# 微信公众号 - 草稿箱接口
+  client_id: "你的client_id"              # 在 oschina.net → Open API → 创建应用
+  client_secret: "你的client_secret"      # 应用的 Secret
+  redirect_uri: "https://www.oschina.net" # 回调地址（一般默认这个）
+  access_token: ""                        # 授权后自动获取，也可以手动填
+  refresh_token: ""                       # 授权后自动获取，填到这一劳永逸
+  # 发布类型：blog(博客,推荐) / tweet(动弹,短消息)
+  pub_type: "blog"
+  # 博客系统分类 ID（整数，必填！）: 428=编程语言 429=移动开发 430=前端 431=后端 432=数据库 433=云计算 434=AI 435=开源 436=操作系统 437=软件工具 438=其他
+  classification: 428
+  save_as_draft: 0      # 0=直接发布, 1=存草稿
+  privacy: "0"           # "0"=公开, "1"=私有（注意是字符串）
 # 前提：已认证的微信服务号/订阅号
 # 获取方式：https://mp.weixin.qq.com/ → 开发 → 基本配置
 # ============================================================
