@@ -14,6 +14,7 @@
 """
 
 import os
+import json
 import time
 import requests
 from pathlib import Path
@@ -128,6 +129,15 @@ class WechatPlatform(BasePlatform):
             message=message,
         )
 
+    def _post_json(self, url: str, payload: dict, **kwargs) -> requests.Response:
+        """发送 JSON 请求，ensure_ascii=False 保留中文不转义"""
+        kwargs.setdefault("timeout", 20)
+        headers = kwargs.pop("headers", {})
+        headers["Content-Type"] = "application/json; charset=utf-8"
+        kwargs["headers"] = headers
+        kwargs["data"] = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        return requests.post(url, **kwargs)
+
     def _upload_default_cover(self, token: str) -> str:
         """上传默认封面图，返回 media_id（thumb_media_id 是草稿必填字段）"""
         try:
@@ -173,30 +183,27 @@ class WechatPlatform(BasePlatform):
             "need_open_comment": 0,
             "only_fans_can_comment": 0,
         }]
-        resp = requests.post(
+        resp = self._post_json(
             f"{self.DRAFT_ADD_URL}?access_token={token}",
-            json={"articles": articles},
-            timeout=20,
+            {"articles": articles},
         )
         return resp.json()
 
     def _publish_draft(self, token: str, media_id: str) -> dict:
         """将草稿提交发布"""
-        resp = requests.post(
+        resp = self._post_json(
             f"{self.FREEPUBLISH_SUBMIT_URL}?access_token={token}",
-            json={"media_id": media_id},
-            timeout=20,
+            {"media_id": media_id},
         )
         return resp.json()
 
     def _get_published_url(self, token: str, publish_id: str) -> str:
         """发布后查询文章链接"""
         try:
-            resp = requests.post(
+            resp = self._post_json(
                 "https://api.weixin.qq.com/cgi-bin/freepublish/getarticle",
+                {"publish_id": publish_id},
                 params={"access_token": token},
-                json={"publish_id": publish_id},
-                timeout=10,
             )
             data = resp.json()
             # 返回结构中有 news_item 包含 url
