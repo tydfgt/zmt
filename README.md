@@ -167,17 +167,26 @@ python -m publisher.cli publish article.md -p oschina --dry-run
 
 > 💡 `classification` 是系统博客分类 ID：428=编程语言, 429=移动开发, 430=前端, 431=后端, 432=数据库, 433=云计算, 434=AI, 435=开源项目, 436=操作系统, 437=软件工具, 438=其他
 
-### 微信公众号（可选，需要认证公众号）
+### 微信公众号
 
 ```yaml
 wechat:
-  enabled: false          # 没有认证公众号就保持 false
-  appid: "你的AppID"
-  appsecret: "你的AppSecret"
-  draft_only: true        # true = 只存草稿；false = 直接发布
+  enabled: true            # 改成 true 启用
+  appid: "wx你的AppID"      # 在 MP 后台获取
+  appsecret: "你的AppSecret" # 在 MP 后台获取
+  draft_only: false         # false=直接发布 / true=仅存草稿
 ```
 
-**如果你没有认证的公众号**（大多数个人用户），保持 `enabled: false`，工具会生成 HTML 文件，你手动复制粘贴到公众号后台即可，效果一样好。
+**怎么获取？**
+
+1. 登录 https://mp.weixin.qq.com（微信公众平台）
+2. 左侧「设置与开发」→「基本配置」→ 可以看到 AppID 和 AppSecret
+3. 在同一页面下方找到 **「IP 白名单」** → 点「修改」→ 添加你电脑的公网 IP
+
+> ⚠️ IP 白名单是必须的！如果不加，API 会返回 `invalid ip not in whitelist`。
+> 不知道自己的 IP？运行 `curl ifconfig.me` 即可查看。
+
+**如果你没有认证公众号**（个人订阅号），部分接口受限。保持 `enabled: false`，工具会生成 HTML 文件供你手动粘贴。
 
 ### 知乎（不需要 API Key）
 
