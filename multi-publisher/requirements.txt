@@ -20,3 +20,6 @@ Pillow>=10.2            # 图片处理
 # ===== 工具类 =====
 python-frontmatter>=1.0 # Markdown Front Matter 解析
 pyperclip>=1.8          # 剪贴板操作
+
+# ===== Qt GUI（可选） =====
+PyQt5>=5.15             # 图形界面
