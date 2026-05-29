@@ -47,7 +47,7 @@ wechat:
   appid: "你的AppID"
   appsecret: "你的AppSecret"
   # 是否只生成 HTML 草稿不自动发布
-  draft_only: true
+  draft_only: false       # false=直接发布 / true=仅存草稿
 
 # ============================================================
 # 知乎 (格式转换辅助，不支持自动发布)

@@ -1,14 +1,15 @@
 """
-微信公众号模块 - 生成公众号 HTML + 可选自动保存草稿。
+微信公众号模块 - 生成公众号 HTML + 草稿箱 + 一键发布。
 
-微信公众平台 API:
-- 文档: https://developers.weixin.qq.com/doc/offiaccount/
-- 草稿箱: https://api.weixin.qq.com/cgi-bin/draft/add
-- 素材管理: https://api.weixin.qq.com/cgi-bin/material/
+微信公众平台 API (订阅号):
+- 文档: https://developers.weixin.qq.com/doc/subscription/api/
+- 获取 Token:    GET  /cgi-bin/token
+- 新增草稿:      POST /cgi-bin/draft/add
+- 发布草稿:      POST /cgi-bin/freepublish/submit
 
 前置条件:
-1. 已认证的微信服务号/订阅号
-2. 在 MP 后台配置 IP 白名单
+1. 微信订阅号/服务号（需已认证才能用部分接口）
+2. 在 MP 后台「开发 → 基本配置」添加 IP 白名单
 3. 获取 AppID 和 AppSecret
 """
 
@@ -26,9 +27,9 @@ class WechatPlatform(BasePlatform):
     name = "wechat"
     label = "微信公众号"
 
-    TOKEN_URL = "https://api.weixin.qq.com/cgi-bin/token"
-    DRAFT_ADD_URL = "https://api.weixin.qq.com/cgi-bin/draft/add"
-    DRAFT_LIST_URL = "https://api.weixin.qq.com/cgi-bin/draft/batchget"
+    TOKEN_URL              = "https://api.weixin.qq.com/cgi-bin/token"
+    DRAFT_ADD_URL          = "https://api.weixin.qq.com/cgi-bin/draft/add"
+    FREEPUBLISH_SUBMIT_URL = "https://api.weixin.qq.com/cgi-bin/freepublish/submit"
 
     def __init__(self, config: dict):
         super().__init__(config)
@@ -67,7 +68,8 @@ class WechatPlatform(BasePlatform):
         """
         发布流程:
         1. 将转换后的 HTML 保存到本地 output/ 目录
-        2. 如果启用了 API 且不是 draft_only，则自动保存到草稿箱
+        2. 上传到微信草稿箱
+        3. 如果 draft_only=false，自动提交发布
         """
         # 1. 保存 HTML 文件（始终执行，方便手动粘贴）
         output_dir = Path("output/wechat")
@@ -76,18 +78,42 @@ class WechatPlatform(BasePlatform):
         filepath = output_dir / f"{safe_name}.html"
         filepath.write_text(result.content, encoding="utf-8")
 
-        message = f"📄 HTML 已保存至: {filepath}\n"
-        message += "👉 下一步：打开微信公众号后台 → 新建图文 → 复制 HTML 粘贴"
+        message = f"📄 HTML 已保存至: {filepath}"
 
-        # 2. 尝试自动保存到草稿箱
-        if not self.draft_only and self.appid and self.appsecret:
-            try:
-                token = self._get_access_token()
-                draft_result = self._add_draft(token, result)
-                if draft_result.get("media_id"):
-                    message += f"\n✅ 已自动保存到微信草稿箱 (media_id: {draft_result['media_id']})"
-            except Exception as e:
-                message += f"\n⚠️ 自动保存草稿失败: {e}"
+        # 如果没有 API 凭据，仅生成 HTML
+        if not self.appid or not self.appsecret:
+            message += "\n👉 下一步：打开微信公众号后台 → 新建图文 → 复制 HTML 粘贴"
+            return PublishResult(success=True, platform=self.name,
+                                 url=f"file://{filepath.absolute()}", message=message)
+
+        # 2. 获取 token → 添加草稿
+        try:
+            token = self._get_access_token()
+            draft_data = self._add_draft(token, result)
+
+            if "media_id" not in draft_data:
+                raise Exception(f"添加草稿失败: {draft_data}")
+
+            media_id = draft_data["media_id"]
+            message += f"\n✅ 已保存到草稿箱 (media_id: {media_id})"
+
+            # 3. 发布草稿
+            if not self.draft_only:
+                pub_data = self._publish_draft(token, media_id)
+                if pub_data.get("errcode") == 0:
+                    publish_id = pub_data.get("publish_id", "")
+                    message += f"\n🚀 已提交发布！(publish_id: {publish_id})"
+                    message += "\n   稍后在公众号后台查看发布状态"
+                    # 尝试获取已发布文章的链接
+                    article_url = self._get_published_url(token, publish_id)
+                    if article_url:
+                        message += f"\n🔗 {article_url}"
+                else:
+                    message += f"\n⚠️ 发布提交失败: {pub_data}"
+
+        except Exception as e:
+            message += f"\n⚠️ API 调用失败: {e}"
+            message += "\n👉 备选方案：打开微信公众号后台 → 新建图文 → 复制 HTML 粘贴"
 
         return PublishResult(
             success=True,
@@ -104,6 +130,7 @@ class WechatPlatform(BasePlatform):
             "content_source_url": "",
             "need_open_comment": 0,
             "only_fans_can_comment": 0,
+            "thumb_media_id": "",       # 封面图 media_id，有空再实现上传
         }]
         resp = requests.post(
             f"{self.DRAFT_ADD_URL}?access_token={token}",
@@ -111,6 +138,33 @@ class WechatPlatform(BasePlatform):
             timeout=20,
         )
         return resp.json()
+
+    def _publish_draft(self, token: str, media_id: str) -> dict:
+        """将草稿提交发布"""
+        resp = requests.post(
+            f"{self.FREEPUBLISH_SUBMIT_URL}?access_token={token}",
+            json={"media_id": media_id},
+            timeout=20,
+        )
+        return resp.json()
+
+    def _get_published_url(self, token: str, publish_id: str) -> str:
+        """发布后查询文章链接"""
+        try:
+            resp = requests.post(
+                "https://api.weixin.qq.com/cgi-bin/freepublish/getarticle",
+                params={"access_token": token},
+                json={"publish_id": publish_id},
+                timeout=10,
+            )
+            data = resp.json()
+            # 返回结构中有 news_item 包含 url
+            news_items = data.get("news_item", [])
+            if news_items:
+                return news_items[0].get("url", "")
+        except Exception:
+            pass
+        return ""
 
     @staticmethod
     def _safe_filename(name: str) -> str:
